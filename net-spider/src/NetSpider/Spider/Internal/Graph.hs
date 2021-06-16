@@ -23,6 +23,7 @@ module NetSpider.Spider.Internal.Graph
          gSubjectNodeID,
          gFilterFoundNodeByTime,
          gTraverseViaFinds,
+         gTraverseViaFindsBoth,
          -- * Mix of VNode and VFoundNode
          gNodeMix,
          gFoundNodeOnly,
@@ -31,7 +32,8 @@ module NetSpider.Spider.Internal.Graph
          gDedupNodes,
          -- * EFinds
          gFinds,
-         gFindsTarget
+         gFindsTarget,
+         gFindsBoth
        ) where
 
 import Control.Category ((<<<))
@@ -44,7 +46,7 @@ import Data.Greskell
     Binder, newBind,
     source, sV, sV', sAddV, gAddV, gHasLabel, gHasId, gHas2, gHas2P, gId, gProperty, gPropertyV, gV,
     gNot, gIdentity', gIdentity, gUnion, gChoose3, gDedup,
-    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy, gBy2, gValues, gOutE, gIn, gLabel,
+    gAddE, gSideEffect, gTo, gFrom, gDrop, gOut, gOrder, gBy, gBy2, gValues, gOutE, gIn, gInE, gLabel,
     ($.), (<*.>), (=:),
     ToGTraversal,
     Key, oDecr, gLimit,
@@ -174,8 +176,21 @@ gFilterFoundNodeByTime interval = do
 gFinds :: Walk Transform VFoundNode EFinds
 gFinds = gOutE ["finds"]
 
+gFindsIn :: Walk Transform VFoundNode EFinds
+gFindsIn = gInE ["finds"]
+
+gFindsBoth :: Walk Transform VFoundNode EFinds
+gFindsBoth = gUnion [gFinds, gFindsIn]
+
 gTraverseViaFinds :: Walk Transform VFoundNode VNode
 gTraverseViaFinds = gOut ["finds"]
+
+gTraverseViaFindsIn :: Walk Transform VFoundNode VNode
+gTraverseViaFindsIn = gIn ["finds"]
+
+gTraverseViaFindsBoth :: Walk Transform VFoundNode VNode
+gTraverseViaFindsBoth = gUnion [gTraverseViaFinds, gTraverseViaFindsBoth]
+
 
 -- | Make a mixed stream of 'VNode' and 'VFoundNode'. In the result
 -- walk, the input 'VNode' is output first, and then, the 'VFoundNode'

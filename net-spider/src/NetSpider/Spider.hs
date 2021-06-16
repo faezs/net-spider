@@ -67,7 +67,7 @@ import NetSpider.Pair (Pair)
 import NetSpider.Queue (Queue, newQueue, popQueue, pushQueue)
 import NetSpider.Query
   ( Query, defQuery, startsFrom, unifyLinkSamples, timeInterval,
-    foundNodePolicy,
+    foundNodePolicy, includeIncomingLinks,
     Interval
   )
 import NetSpider.Query.Internal (FoundNodePolicy(..))
@@ -75,7 +75,7 @@ import NetSpider.Snapshot.Internal (SnapshotGraph, SnapshotNode(..), SnapshotLin
 import NetSpider.Spider.Config (Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
-    gLatestFoundNode, gSelectFoundNode, gFinds, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
+    gLatestFoundNode, gSelectFoundNode, gFinds, gFindsBoth, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
     gFilterFoundNodeByTime, gSubjectNodeID, gTraverseViaFinds,
     gNodeMix, gFoundNodeOnly, gEitherNodeMix, gDedupNodes
   )
@@ -178,8 +178,9 @@ getSnapshot :: (FromGraphSON n, ToJSON n, Ord n, Hashable n, Show n, LinkAttribu
             -> IO (SnapshotGraph n na sla)
 getSnapshot spider query = do
   let fn_policy = foundNodePolicy query
+  let add_incoming = includeIncomingLinks query
   ref_weaver <- newIORef $ newWeaver fn_policy
-  mapM_ (traverseFromOneNode spider (timeInterval query) fn_policy ref_weaver) $ startsFrom query
+  mapM_ (traverseFromOneNode spider (timeInterval query) fn_policy add_incoming ref_weaver) $ startsFrom query
   (graph, logs) <- fmap (Weaver.getSnapshot' $ unifyLinkSamples query) $ readIORef ref_weaver
   mapM_ (logLine spider) logs
   return graph
@@ -188,13 +189,14 @@ traverseFromOneNode :: (FromGraphSON n, ToJSON n, Eq n, Hashable n, Show n, Link
                     => Spider n na fla
                     -> Interval Timestamp
                     -> FoundNodePolicy n na
+                    -> Bool
                     -> IORef (Weaver n na fla)
                     -> n -- ^ starting node
                     -> IO ()
-traverseFromOneNode spider time_interval fn_policy ref_weaver start_nid = do
+traverseFromOneNode spider time_interval fn_policy include_incoming ref_weaver start_nid = do
   init_weaver <- readIORef ref_weaver
   logDebug spider ("Start traverse from: " <> spack start_nid)
-  get_next <- traverseFoundNodes spider time_interval fn_policy start_nid
+  get_next <- traverseFoundNodes spider time_interval fn_policy include_incoming start_nid
   doTraverseWith init_weaver get_next
   where
     logTraverseItem eitem = logDebug spider ("Visit: " <> showTraverseItem eitem)
@@ -236,9 +238,10 @@ traverseFoundNodes :: (ToJSON n, NodeAttributes na, LinkAttributes fla, FromGrap
                    => Spider n na fla
                    -> Interval Timestamp -- ^ query time interval.
                    -> FoundNodePolicy n na -- ^ query found node policy
+                   -> Bool
                    -> n -- ^ the starting node
                    -> IO (IO (Maybe (Either n (FoundNode n na fla))))
-traverseFoundNodes spider time_interval fn_policy start_nid = do
+traverseFoundNodes spider time_interval fn_policy include_incoming start_nid = do
   rhandle <- Gr.submit (spiderClient spider) gr_query (Just gr_binding)
   return $ do
     msmap <- Gr.nextResult rhandle
@@ -260,13 +263,14 @@ traverseFoundNodes spider time_interval fn_policy start_nid = do
       ltarget <- newAsLabel
       lvfnd <- newAsLabel
       lefs <- newAsLabel
+      let finds = if include_incoming then gFindsBoth else gFinds
       let walk_select_mixed = gLocal $ gNodeMix walk_select_fnode -- gLocal is necessary because we may have .limit() step inside.
           walk_finds_and_target =
             gProject
             ( gByL lefd gEFindsData )
             [ gByL ltarget (gNodeID spider <<< gFindsTarget)
             ]
-            <<< gFinds
+            <<< finds
           walk_construct_result = gEitherNodeMix walk_construct_vnode walk_construct_vfnode
           walk_construct_vnode =
             gProject

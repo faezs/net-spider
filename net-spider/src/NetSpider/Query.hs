@@ -13,6 +13,7 @@ module NetSpider.Query
          unifyLinkSamples,
          timeInterval,
          foundNodePolicy,
+         includeIncomingLinks,
          -- * FoundNodePolicy
          FoundNodePolicy,
          policyOverwrite,
@@ -60,12 +61,17 @@ data Query n na fla sla =
     -- Default: (-infinity, +infinity)
     --
     -- @since 0.2.0.0
-    foundNodePolicy :: FoundNodePolicy n na
+    foundNodePolicy :: FoundNodePolicy n na,
     -- ^ Policy to treat 'FoundNode's (local findings).
     --
     -- Default: 'policyOverwrite'
     --
     -- @since 0.2.0.0
+    includeIncomingLinks :: Bool
+    -- ^ Whether to include incoming links in computing
+    -- the neighborhood of a node when constructing the snapshot.
+    --
+    -- Default : False
   }
 
 -- | The default 'Query'.
@@ -76,7 +82,8 @@ defQuery ns = Query
               { startsFrom = ns,
                 unifyLinkSamples = unifyToOne,
                 timeInterval = Interval.whole,
-                foundNodePolicy = policyOverwrite
+                foundNodePolicy = policyOverwrite,
+                includeIncomingLinks = False
               }
 
 -- | A 'FoundNode' always overwrites old 'FoundNode's, so only the

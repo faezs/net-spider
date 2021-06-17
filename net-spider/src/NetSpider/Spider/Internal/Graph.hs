@@ -23,7 +23,7 @@ module NetSpider.Spider.Internal.Graph
          gSubjectNodeID,
          gFilterFoundNodeByTime,
          gTraverseViaFinds,
-         gTraverseViaFindsBoth,
+         gTraverseViaFindsIn,
          -- * Mix of VNode and VFoundNode
          gNodeMix,
          gFoundNodeOnly,
@@ -32,7 +32,10 @@ module NetSpider.Spider.Internal.Graph
          gDedupNodes,
          -- * EFinds
          gFinds,
+         gFindsIn,
          gFindsTarget,
+         gFindsSource,
+         --gFindsTargetBoth,
          gFindsBoth
        ) where
 
@@ -64,7 +67,7 @@ import NetSpider.Graph
   )
 import NetSpider.Graph.Internal
   ( keyTimestamp, gSetTimestamp, gSetLinkState,
-    gFindsTarget
+    gFindsTarget, gFindsSource
   )
 import NetSpider.Found (FoundLink(..), LinkState(..), FoundNode(..), linkStateToText)
 import NetSpider.Interval (lowerBound', upperBound')

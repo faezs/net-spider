@@ -24,6 +24,7 @@ module NetSpider.Graph.Internal
          LinkAttributes(..),
          gSetLinkState,
          gFindsTarget,
+         gFindsSource,
          gEFindsData,
          -- * Reconstruction
          makeFoundNode,
@@ -40,7 +41,7 @@ import Data.Greskell
     AVertexProperty, AVertex, AEdge,
     Walk, SideEffect, Transform, unsafeCastEnd,
     Binder, Parser, GValue,
-    gIdentity, gProperty, gPropertyV, (=:), gProperties, gInV,
+    gIdentity, gProperty, gPropertyV, (=:), gProperties, gInV, gOutV, gUnion,
     newBind,
     Key, AsLabel, unKey,
     PMap, Multi, Single, lookupAs, PMapLookupException,
@@ -186,6 +187,9 @@ gSetLinkState ls = do
 
 gFindsTarget :: Walk Transform EFinds VNode
 gFindsTarget = gInV
+
+gFindsSource :: Walk Transform EFinds VNode
+gFindsSource = gOutV
 
 labelEProps :: AsLabel (PMap Single GValue)
 labelEProps = "eprops"

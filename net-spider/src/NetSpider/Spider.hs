@@ -75,8 +75,8 @@ import NetSpider.Snapshot.Internal (SnapshotGraph, SnapshotNode(..), SnapshotLin
 import NetSpider.Spider.Config (Config(..), defConfig)
 import NetSpider.Spider.Internal.Graph
   ( gMakeFoundNode, gAllNodes, gHasNodeID, gHasNodeEID, gNodeEID, gNodeID, gMakeNode, gClearAll,
-    gLatestFoundNode, gSelectFoundNode, gFinds, gFindsBoth, gFindsTarget, gHasFoundNodeEID, gAllFoundNode,
-    gFilterFoundNodeByTime, gSubjectNodeID, gTraverseViaFinds,
+    gLatestFoundNode, gSelectFoundNode, gFinds, gFindsIn, gFindsTarget, gFindsSource, gHasFoundNodeEID, gAllFoundNode,
+    gFilterFoundNodeByTime, gSubjectNodeID, gTraverseViaFinds, gTraverseViaFindsIn,
     gNodeMix, gFoundNodeOnly, gEitherNodeMix, gDedupNodes
   )
 import NetSpider.Spider.Internal.Log
@@ -242,6 +242,7 @@ traverseFoundNodes :: (ToJSON n, NodeAttributes na, LinkAttributes fla, FromGrap
                    -> n -- ^ the starting node
                    -> IO (IO (Maybe (Either n (FoundNode n na fla))))
 traverseFoundNodes spider time_interval fn_policy include_incoming start_nid = do
+  print gr_query
   rhandle <- Gr.submit (spiderClient spider) gr_query (Just gr_binding)
   return $ do
     msmap <- Gr.nextResult rhandle
@@ -263,14 +264,16 @@ traverseFoundNodes spider time_interval fn_policy include_incoming start_nid = d
       ltarget <- newAsLabel
       lvfnd <- newAsLabel
       lefs <- newAsLabel
-      let finds = if include_incoming then gFindsBoth else gFinds
+      let finds = if include_incoming then gFindsIn else gFinds
+      let traverseViaFinds = if include_incoming then gTraverseViaFindsIn else gTraverseViaFinds
+      let findsTarget = if include_incoming then gFindsTarget else gFindsSource
       let walk_select_mixed = gLocal $ gNodeMix walk_select_fnode -- gLocal is necessary because we may have .limit() step inside.
           walk_finds_and_target =
             gProject
             ( gByL lefd gEFindsData )
             [ gByL ltarget (gNodeID spider <<< gFindsTarget)
             ]
-            <<< finds
+            <<< gFinds
           walk_construct_result = gEitherNodeMix walk_construct_vnode walk_construct_vfnode
           walk_construct_vnode =
             gProject

@@ -19,7 +19,7 @@ import NetSpider.Graph (NodeAttributes, LinkAttributes)
 import NetSpider.Pair (Pair(Pair))
 import NetSpider.Query
   ( Query, defQuery, unifyLinkSamples,
-    FoundNodePolicy, foundNodePolicy, policyOverwrite, policyAppend
+    FoundNodePolicy, foundNodePolicy, policyOverwrite, policyAppend, includeIncomingLinks
   )
 import NetSpider.Snapshot
   ( SnapshotLink, SnapshotGraph,
@@ -53,6 +53,25 @@ data SnapshotTestCase where
       caseQuery :: Query n na fla sla,
       caseAssert :: SnapshotGraph n na sla -> IO ()
     } -> SnapshotTestCase
+
+
+rootIsPointedToFoundNodes :: [FoundNode Text () ()]
+rootIsPointedToFoundNodes = [r, n]
+  where
+    linkTo1 = FoundLink { targetNode = "n1",
+                          linkState = LinkToSubject,
+                          linkAttributes = ()
+                        }
+    r = FoundNode { subjectNode = "n1",
+                    foundAt = fromS "2018-12-01T10:00",
+                    neighborLinks = [],
+                    nodeAttributes = ()
+                  }
+    n = FoundNode { subjectNode = "n2",
+                    foundAt = fromS "2018-12-01T11:00",
+                    neighborLinks = [linkTo1],
+                    nodeAttributes = ()
+                  }
 
 oneNeighborFoundNodes :: [FoundNode Text () ()]
 oneNeighborFoundNodes = [nbs]
@@ -662,7 +681,8 @@ basics =
     },
     
     diamondTopologyCase policyOverwrite,
-    diamondTopologyCase policyAppend
+    diamondTopologyCase policyAppend,
+    rootIsPointedToCase
   ]
   where
     one_neighbor_assert (got_ns, got_ls) = do
@@ -804,6 +824,22 @@ basics =
       S.linkAttributes (got_ls ! 2) `shouldBe` APorts "p5" "p10"
       linkTimestamp (got_ls ! 2) `shouldBe` fromS "2018-12-01T20:00"
       V.length got_ls `shouldBe` 3
+
+
+rootIsPointedToCase :: SnapshotTestCase
+rootIsPointedToCase = SnapshotTestCase
+    { caseName = "root node is pointed TO",
+      caseInput = rootIsPointedToFoundNodes,
+      caseQuery = (defQuery ["n1"]) {
+        includeIncomingLinks = True
+      },
+      caseAssert = \(got_ns', got_ls) -> do
+        let got_ns = sort got_ns'
+        (length got_ns) `shouldBe` 2
+        nodeId (got_ns !! 0) `shouldBe` "n1"
+        nodeId (got_ns !! 1) `shouldBe` "n2"
+        (length got_ls) `shouldBe` 1
+    }
 
 
 -- | \"Traverses\" test cases involve traversing graphs. For example,

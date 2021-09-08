@@ -7,10 +7,11 @@
 -- 
 module NetSpider.Spider
        ( -- * Spider type
-         Spider,
+         Spider(..),
          -- * Make Spider
          connectWS,
          connectWith,
+         connectWithOpts,
          -- * Close Spider
          close,
          -- * Bracket form
@@ -51,6 +52,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Network.Greskell.WebSocket (Host, Port)
 import qualified Network.Greskell.WebSocket as Gr
+import qualified Network.Greskell.WebSocket.Client.Options as Gr
 
 import NetSpider.Graph (EID, LinkAttributes, NodeAttributes)
 import NetSpider.Graph.Internal
@@ -101,6 +103,13 @@ connectWith conf = do
   client <- Gr.connect (wsHost conf) (wsPort conf)
   return $ Spider { spiderConfig = conf,
                     spiderClient = client
+                  }
+
+connectWithOpts :: Gr.Options -> Config n v e -> IO (Spider n v e)
+connectWithOpts opts conf = do
+  client <- Gr.connectWith opts (wsHost conf) (wsPort conf)
+  return $ Spider { spiderConfig = conf
+                  , spiderClient = client
                   }
   
 -- | Close and release the 'Spider' object.
